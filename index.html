@@ -1,14 +1,303 @@
-
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="ms">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GENJI V15</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>XAUUSD Smart AI V1</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#080e19;--panel:#111c2d;--line:#26364d;--muted:#91a3bb;--gold:#f2c45d;--green:#28d6a0;--red:#ff6678;--blue:#78aaff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#e8eef8;font:14px/1.45 system-ui,Arial,sans-serif}
+header{padding:16px clamp(12px,3vw,28px);background:#101a2a;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-size:19px;margin:0;color:var(--gold)}header small,.muted,.label{color:var(--muted)}
+main{max-width:1250px;margin:auto;padding:14px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.panel,.metric{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px;min-width:0}
+.metric .label{font-size:11px;text-transform:uppercase;letter-spacing:.07em}.metric strong{display:block;font-size:20px;margin-top:5px;overflow-wrap:anywhere}
+.toolbar{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
+button{background:#1b2a40;color:#e8eef8;border:1px solid #344963;padding:9px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+button.active{background:var(--gold);color:#111827;border-color:var(--gold)}
+button:disabled{opacity:.5;cursor:wait}
+#chart{height:440px;width:100%}
+.split{display:grid;grid-template-columns:1.3fr 1fr;gap:10px}
+h2{font-size:15px;margin:0 0 12px}
+.tf-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.tf-card{background:#0c1626;border:1px solid var(--line);border-radius:9px;padding:10px}
+.tf-card b{display:block;font-size:12px;color:var(--muted)}.tf-card strong{display:block;margin-top:5px;font-size:13px}
+.green{color:var(--green)}.red{color:var(--red)}.gold{color:var(--gold)}.blue{color:var(--blue)}
+.signal{font-size:25px;font-weight:850;letter-spacing:.02em}
+.details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.detail{background:#0c1626;border-radius:8px;padding:10px}.detail small{display:block;color:var(--muted);font-size:11px}.detail b{display:block;margin-top:4px}
+#log{font-size:12px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
+#status{padding:10px 12px;border-radius:8px;background:#172338;color:var(--gold);font-size:12px;margin:10px 0}
+.note{font-size:11px;color:var(--muted);line-height:1.55}
+@media(max-width:760px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.split{grid-template-columns:1fr}#chart{height:370px}.tf-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:390px){main{padding:9px}.metric strong{font-size:17px}.panel{padding:10px}}
+</style>
 </head>
+<body>
+<header>
+ <div><h1>✦ XAUUSD SMART AI V1</h1><small>Multi-timeframe market analysis · Web dashboard</small></div>
+ <div class="muted" id="clock">--</div>
+</header>
+<main>
+ <section class="grid">
+  <div class="metric"><div class="label">XAUUSD price</div><strong id="price" class="gold">--</strong></div>
+  <div class="metric"><div class="label">Selected timeframe</div><strong id="selectedTf">M1</strong></div>
+  <div class="metric"><div class="label">Candle countdown</div><strong id="countdown" class="gold">--:--</strong></div>
+  <div class="metric"><div class="label">Feed status</div><strong id="feedStatus" class="gold">CONNECTING</strong></div>
+ </section>
 
-<body style="background:#0b0f14;color:white;font-family:Arial">
-    <h1>GENJI V15 DASHBOARD</h1>
-    <p>Dashboard sedang disediakan...</p>
+ <div class="toolbar" id="timeframes">
+  <button class="active" data-tf="1m">M1</button><button data-tf="5m">M5</button>
+  <button data-tf="15m">M15</button><button data-tf="1h">H1</button><button data-tf="4h">H4</button>
+  <button id="refresh">↻ Refresh</button>
+ </div>
+
+ <section class="panel" style="padding:5px"><div id="chart"></div></section>
+ <div id="status">Menyambung ke sumber data...</div>
+
+ <section class="grid" style="margin-top:10px">
+  <div class="metric"><div class="label">EMA 9</div><strong id="ema9" class="gold">--</strong></div>
+  <div class="metric"><div class="label">EMA 21</div><strong id="ema21" class="green">--</strong></div>
+  <div class="metric"><div class="label">EMA 200</div><strong id="ema200" class="red">--</strong></div>
+  <div class="metric"><div class="label">Trend selected TF</div><strong id="trend">WAIT</strong></div>
+ </section>
+
+ <section class="panel" style="margin-bottom:10px">
+  <h2>Multi-timeframe trend</h2>
+  <div class="tf-grid" id="mtf">
+   <div class="tf-card"><b>M1</b><strong>Loading</strong></div>
+   <div class="tf-card"><b>M5</b><strong>Loading</strong></div>
+   <div class="tf-card"><b>M15</b><strong>Loading</strong></div>
+   <div class="tf-card"><b>H1</b><strong>Loading</strong></div>
+   <div class="tf-card"><b>H4</b><strong>Loading</strong></div>
+  </div>
+ </section>
+
+ <section class="split">
+  <div class="panel">
+   <h2>Signal confluence</h2>
+   <div id="signal" class="signal gold">WAIT</div>
+   <p class="note" id="signalReason">Menunggu data lengkap H1 dan M15.</p>
+   <div class="details">
+    <div class="detail"><small>Structure</small><b id="structure">--</b></div>
+    <div class="detail"><small>Liquidity sweep</small><b id="liquidity">--</b></div>
+    <div class="detail"><small>Fair value gap</small><b id="fvg">--</b></div>
+    <div class="detail"><small>Setup score</small><b id="score">--</b></div>
+    <div class="detail"><small>Reference entry</small><b id="entry">--</b></div>
+    <div class="detail"><small>Illustrative stop</small><b id="sl">--</b></div>
+    <div class="detail"><small>Illustrative target</small><b id="tp">--</b></div>
+    <div class="detail"><small>Last closed candle</small><b id="lastCandle">--</b></div>
+   </div>
+  </div>
+  <div class="panel">
+   <h2>Analysis log</h2><div id="log">No data yet.</div>
+  </div>
+ </section>
+ <section class="panel" style="margin-top:10px">
+  <h2>Data & risk notes</h2>
+  <p class="note">Data feed: BiQuote endpoint configured in this file. Feed access, CORS, response schema and quote freshness must be verified in this browser. If the provider is unavailable, this dashboard displays an error instead of fabricating prices. Analysis uses closed candles only. H1 and M15 must agree; conflicting or incomplete timeframes produce WAIT. EMA, BOS, liquidity and FVG are heuristic chart calculations, not an AI model or a guarantee of future movement. Entry/SL/TP values are illustrative calculations for testing only, not trading instructions. No broker connection or order execution.</p>
+ </section>
+</main>
+
+<script>
+'use strict';
+const API_BASE='https://biquote.io/api/XAUUSD/ohlc';
+const TF=['1m','5m','15m','1h','4h'];
+const SECONDS={'1m':60,'5m':300,'15m':900,'1h':3600,'4h':14400};
+const LABEL={'1m':'M1','5m':'M5','15m':'M15','1h':'H1','4h':'H4'};
+const state={tf:'1m',data:{},lastFetch:null,errors:[]};
+const el=id=>document.getElementById(id);
+let chart,candles,ema9Line,ema21Line,ema200Line,pollHandle,clockHandle;
+
+function initChart(){
+ if(!window.LightweightCharts)throw new Error('Pustaka carta gagal dimuat turun.');
+ chart=LightweightCharts.createChart(el('chart'),{
+  width:el('chart').clientWidth,height:440,
+  layout:{background:{color:'#111c2d'},textColor:'#b8c8dc'},
+  grid:{vertLines:{color:'#1d2b3d'},horzLines:{color:'#1d2b3d'}},
+  rightPriceScale:{borderColor:'#344963'},
+  timeScale:{borderColor:'#344963',timeVisible:true,secondsVisible:false},
+  crosshair:{mode:1}
+ });
+ candles=chart.addCandlestickSeries({upColor:'#28d6a0',downColor:'#ff6678',borderUpColor:'#28d6a0',borderDownColor:'#ff6678',wickUpColor:'#28d6a0',wickDownColor:'#ff6678'});
+ ema9Line=chart.addLineSeries({color:'#f2c45d',lineWidth:1});
+ ema21Line=chart.addLineSeries({color:'#28d6a0',lineWidth:1});
+ ema200Line=chart.addLineSeries({color:'#ff6678',lineWidth:2});
+ new ResizeObserver(()=>chart.applyOptions({width:el('chart').clientWidth})).observe(el('chart'));
+}
+function parseBars(json){
+ const bars=json?.data?.bars;
+ if(!Array.isArray(bars))throw new Error('Respons API tiada data.bars. Semak endpoint/schema.');
+ const out=bars.map(x=>{
+  const rawTime=Number(x.openTime??x.time??x.timestamp);
+  const time=rawTime>1e12?Math.floor(rawTime/1000):Math.floor(rawTime);
+  return {time,open:Number(x.open),high:Number(x.high),low:Number(x.low),close:Number(x.close),isOpen:x.isOpen===true};
+ }).filter(x=>Number.isFinite(x.time)&&[x.open,x.high,x.low,x.close].every(Number.isFinite))
+ .sort((a,b)=>a.time-b.time);
+ const unique=out.filter((x,i,a)=>i===0||x.time!==a[i-1].time);
+ const now=Math.floor(Date.now()/1000);
+ const closed=unique.filter(x=>!x.isOpen&&x.time+SECONDS[state.tf] <= now);
+ if(closed.length<20)throw new Error('Data candle tertutup tidak mencukupi ('+closed.length+').');
+ return closed.slice(-260);
+}
+async function fetchTF(tf){
+ const url=API_BASE+'?interval='+encodeURIComponent(tf)+'&limit=260';
+ const res=await fetch(url,{cache:'no-store'});
+ if(!res.ok)throw new Error('HTTP '+res.status+' untuk '+LABEL[tf]);
+ const json=await res.json();
+ const bars=json?.data?.bars;
+ if(!Array.isArray(bars))throw new Error('Format API tidak sepadan untuk '+LABEL[tf]);
+ // Filter closed candles using that timeframe, not selected timeframe.
+ const now=Math.floor(Date.now()/1000);
+ const rows=bars.map(x=>{
+  const raw=Number(x.openTime??x.time??x.timestamp);
+  const t=raw>1e12?Math.floor(raw/1000):Math.floor(raw);
+  return {time:t,open:Number(x.open),high:Number(x.high),low:Number(x.low),close:Number(x.close),isOpen:x.isOpen===true};
+ }).filter(x=>Number.isFinite(x.time)&&[x.open,x.high,x.low,x.close].every(Number.isFinite))
+ .sort((a,b)=>a.time-b.time);
+ const unique=rows.filter((x,i,a)=>i===0||x.time!==a[i-1].time);
+ const closed=unique.filter(x=>!x.isOpen&&x.time+SECONDS[tf]<=now).slice(-260);
+ if(closed.length<20)throw new Error('Candle tertutup tidak cukup: '+LABEL[tf]+' ('+closed.length+').');
+ state.data[tf]=closed;
+}
+function calcEMA(data,n){
+ if(data.length<n)return [];
+ let v=data.slice(0,n).reduce((s,x)=>s+x.close,0)/n;
+ const out=[{time:data[n-1].time,value:v}],k=2/(n+1);
+ for(let i=n;i<data.length;i++){v=(data[i].close-v)*k+v;out.push({time:data[i].time,value:v});}
+ return out;
+}
+function trendOf(data){
+ if(!data||data.length<200)return 'INSUFFICIENT';
+ const a=calcEMA(data,9).at(-1).value,b=calcEMA(data,21).at(-1).value,c=calcEMA(data,200).at(-1).value,p=data.at(-1).close;
+ if(a>b&&b>c&&p>c)return 'BULLISH';
+ if(a<b&&b<c&&p<c)return 'BEARISH';
+ return 'SIDEWAYS';
+}
+function structureOf(data){
+ if(data.length<12)return 'INSUFFICIENT';
+ const last=data.at(-1),prior=data.slice(-11,-1);
+ const hi=Math.max(...prior.map(x=>x.high)),lo=Math.min(...prior.map(x=>x.low));
+ if(last.close>hi)return 'BOS BULLISH';
+ if(last.close<lo)return 'BOS BEARISH';
+ return 'NO BREAK';
+}
+function sweepOf(data){
+ if(data.length<12)return 'INSUFFICIENT';
+ const last=data.at(-1),prior=data.slice(-11,-1);
+ const hi=Math.max(...prior.map(x=>x.high)),lo=Math.min(...prior.map(x=>x.low));
+ if(last.high>hi&&last.close<hi)return 'SWEEP HIGH';
+ if(last.low<lo&&last.close>lo)return 'SWEEP LOW';
+ return 'NONE';
+}
+function fvgOf(data){
+ if(data.length<3)return 'INSUFFICIENT';
+ const a=data.at(-3),c=data.at(-1);
+ if(c.low>a.high)return 'BULLISH FVG';
+ if(c.high<a.low)return 'BEARISH FVG';
+ return 'NONE';
+}
+function setClass(node,text){
+ node.textContent=text;
+ node.className='value '+(text==='BULLISH'?'green':text==='BEARISH'?'red':text==='SIDEWAYS'?'gold':'');
+}
+function renderSelected(){
+ const d=state.data[state.tf];if(!d)return;
+ const e9=calcEMA(d,9),e21=calcEMA(d,21),e200=calcEMA(d,200);
+ candles.setData(d);ema9Line.setData(e9);ema21Line.setData(e21);ema200Line.setData(e200);
+ chart.timeScale().fitContent();
+ const last=d.at(-1);
+ el('price').textContent=last.close.toFixed(2);
+ el('ema9').textContent=e9.at(-1)?.value.toFixed(2)||'--';
+ el('ema21').textContent=e21.at(-1)?.value.toFixed(2)||'--';
+ el('ema200').textContent=e200.at(-1)?.value.toFixed(2)||'Need 200 candles';
+ setClass(el('trend'),trendOf(d));
+ el('selectedTf').textContent=LABEL[state.tf];
+ el('structure').textContent=structureOf(d);
+ el('liquidity').textContent=sweepOf(d);
+ el('fvg').textContent=fvgOf(d);
+ el('lastCandle').textContent=new Date(last.time*1000).toLocaleString();
+}
+function renderMTF(){
+ el('mtf').innerHTML='';
+ TF.forEach(tf=>{
+  const t=trendOf(state.data[tf]||[]);
+  const box=document.createElement('div');box.className='tf-card';
+  const name=document.createElement('b');name.textContent=LABEL[tf];
+  const value=document.createElement('strong');value.textContent=t;
+  value.className=t==='BULLISH'?'green':t==='BEARISH'?'red':'gold';
+  box.append(name,value);el('mtf').append(box);
+ });
+}
+function renderSignal(){
+ const h1=trendOf(state.data['1h']||[]),m15=trendOf(state.data['15m']||[]);
+ const m5=trendOf(state.data['5m']||[]),m1=trendOf(state.data['1m']||[]);
+ const d=state.data[state.tf]||[];
+ const sweep=sweepOf(d),structure=structureOf(d),fvg=fvgOf(d);
+ let direction='WAIT',score=0,reason='Menunggu data H1 dan M15 yang lengkap.';
+ if(h1==='BULLISH'&&m15==='BULLISH'){
+  score=2+(m5==='BULLISH'?1:0)+(m1==='BULLISH'?1:0);
+  if(m5==='BEARISH'||m1==='BEARISH')reason='Trend H1/M15 bullish tetapi M5/M1 bercanggah. Tunggu.';
+  else if(sweep==='SWEEP LOW'||structure==='BOS BULLISH'||fvg==='BULLISH FVG'){direction='BUY SETUP';reason='H1 dan M15 bullish; terdapat sekurang-kurangnya satu petunjuk struktur pada timeframe dipilih.';}
+  else reason='H1 dan M15 bullish tetapi belum ada pencetus struktur yang jelas.';
+ }else if(h1==='BEARISH'&&m15==='BEARISH'){
+  score=2+(m5==='BEARISH'?1:0)+(m1==='BEARISH'?1:0);
+  if(m5==='BULLISH'||m1==='BULLISH')reason='Trend H1/M15 bearish tetapi M5/M1 bercanggah. Tunggu.';
+  else if(sweep==='SWEEP HIGH'||structure==='BOS BEARISH'||fvg==='BEARISH FVG'){direction='SELL SETUP';reason='H1 dan M15 bearish; terdapat sekurang-kurangnya satu petunjuk struktur pada timeframe dipilih.';}
+  else reason='H1 dan M15 bearish tetapi belum ada pencetus struktur yang jelas.';
+ }else reason='H1 dan M15 tidak sehala atau data belum lengkap. Sistem kekal WAIT.';
+ const sig=el('signal');sig.textContent=direction;sig.className='signal '+(direction==='BUY SETUP'?'green':direction==='SELL SETUP'?'red':'gold');
+ el('signalReason').textContent=reason;
+ el('score').textContent=score+'/4 confluence';
+ const price=d.at(-1)?.close;
+ const atr=d.length>14?d.slice(-14).reduce((s,x)=>s+(x.high-x.low),0)/14:NaN;
+ if((direction==='BUY SETUP'||direction==='SELL SETUP')&&Number.isFinite(price)&&Number.isFinite(atr)){
+  const buy=direction==='BUY SETUP';
+  el('entry').textContent=price.toFixed(2);
+  el('sl').textContent=(price+(buy?-1:1)*atr*1.5).toFixed(2);
+  el('tp').textContent=(price+(buy?1:-1)*atr*2).toFixed(2);
+ }else{el('entry').textContent='--';el('sl').textContent='--';el('tp').textContent='--';}
+ el('log').textContent=[
+  'H1 trend: '+h1,'M15 trend: '+m15,'M5 trend: '+m5,'M1 trend: '+m1,
+  'Selected TF: '+LABEL[state.tf],'Structure: '+structure,
+  'Liquidity: '+sweep,'FVG: '+fvg,'Setup: '+direction,
+  'Updated: '+(state.lastFetch?new Date(state.lastFetch).toLocaleTimeString():'--')
+ ].join('\n');
+}
+async function refreshAll(){
+ const btn=el('refresh');btn.disabled=true;el('feedStatus').textContent='UPDATING';
+ const settled=await Promise.allSettled(TF.map(fetchTF));
+ const failed=settled.map((r,i)=>r.status==='rejected'?LABEL[TF[i]]+': '+r.reason.message:null).filter(Boolean);
+ state.errors=failed;state.lastFetch=Date.now();
+ if(state.data[state.tf])renderSelected();
+ renderMTF();renderSignal();
+ if(failed.length===0){
+  el('feedStatus').textContent='CONNECTED';el('feedStatus').className='green';
+  el('status').textContent='Semua timeframe berjaya dikemas kini · '+new Date().toLocaleTimeString();
+ }else{
+  el('feedStatus').textContent='PARTIAL / ERROR';el('feedStatus').className='gold';
+  el('status').textContent='Feed bermasalah: '+failed.join(' | ');
+ }
+ btn.disabled=false;
+}
+function tick(){
+ const d=state.data[state.tf];if(!d?.length)return;
+ const end=d.at(-1).time+SECONDS[state.tf],left=Math.max(0,end-Math.floor(Date.now()/1000));
+ el('countdown').textContent=String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
+ el('clock').textContent=new Date().toLocaleString();
+}
+document.querySelectorAll('[data-tf]').forEach(b=>b.addEventListener('click',()=>{
+ state.tf=b.dataset.tf;document.querySelectorAll('[data-tf]').forEach(x=>x.classList.toggle('active',x===b));
+ if(state.data[state.tf]){renderSelected();renderSignal();}else{el('status').textContent='Data '+LABEL[state.tf]+' belum tersedia.';}
+}));
+el('refresh').addEventListener('click',refreshAll);
+async function start(){
+ initChart();await refreshAll();pollHandle=setInterval(refreshAll,15000);clockHandle=setInterval(tick,1000);
+}
+start().catch(e=>{el('feedStatus').textContent='ERROR';el('status').textContent='Ralat: '+e.message;});
+</script>
 </body>
 </html>
